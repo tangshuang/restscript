@@ -1,21 +1,27 @@
-# ScopedReuqest
+# RestScript
 
 高效的前端数据请求处理工具库。
 
-## 什么是 ScopedRequest？
+## 什么是 RestScript？
 
-在前端开发中，我们常常需要对后端接口返回的数据进行处理，例如后端返回了错误的数据类型（常常引起前端报错）、对数据进行简单的类型检查、把值的类型进行转化（例如把字符串形式的数值转化为真实的数值）、对数据进行裁剪（去掉无用的字段）等等。在之前，我们常常通过写具体的代码来实现这些逻辑，这导致代码量很大，且维护起来并不容易。ScopedRequest 对这些处理进行了高度封装，同时基于一种[抽象的 DSL 语言](https://www.tangshuang.net/8445.html)，来对接口进行定义，使得我们的数据请求具有类似 GraphQL 一样的描述性质。ScopedRequest 将我们的数据请求限定在我们预期的范围内，这便是 *Scoped* 的含义。
+RestScript是一款用[抽象语法](https://www.tangshuang.net/8445.html)来描述Restful API请求的工具库，用以在前端请求时获得遵循语法描述中结构一致的数据（有点类似GraphQL）。
+
+在前端开发中，我们常常因为前后端数据结构不一致导致后端返回的数据引起bug，RestScript提供了一套语法描述，通过语法描述来定义数据结构，然后通过RestScript来处理数据，使后端返回的数据严格按照前端语法描述中的结构返回，从而避免数据类型错误。
+
+同时，基于RestScript，前端可以更方便的对数据进行过滤、排序、聚合等操作，从而减少前端代码量，提高开发效率。结合NodeJS中间层，利用RestScript，还可以对后端数据进行裁剪，从而在保证数据结构前端可用的基础上，减少后端返回的数据量，提升性能。
+
+另外，RestScript还提供了webpack loader和独立的compiler工具，可以将markdown中的RestScript代码转换为JavaScript代码，从而实现文档和代码合二为一（文档即代码）。
 
 ## 安装
 
 ```
-npm i scopedrequest
+npm i restscript
 ```
 
 ## 使用
 
 ```js
-import { ScopedRequest } from 'scopedrequest'
+import { RestScript } from 'restscript'
 
 const SearchImages = `
   GET "https://api.thecatapi.com/v1/images/search" -> [
@@ -26,37 +32,41 @@ const SearchImages = `
   ]
 `
 
-const data = await ScopedRequest.run(SearchImages)
+const data = await RestScript.run(SearchImages)
 ```
 
-上面这段代码中，我们使用一段文本 DSL 描述了我们的某个请求，我们可以把这段文本放在一个独立的地方，需要这个请求时，使用 `ScopedRequest.run` 执行这个请求，并得到我们需要的数据。
+上面这段代码中，我们使用一段文本 DSL 描述了我们的某个请求，我们可以把这段文本放在一个独立的地方，需要这个请求时，使用 `RestScript.run` 执行这个请求，并得到我们需要的数据。
 
 ## API
 
-### ScopedRequest#run(code:string, params:object, dataList:object[] | null, context:any): Promise<any>
+### RestScript.run(code:string, params:object, dataset:object[] | null, context:any): Promise<any>
 
 运行查询，返回一个查询结果的 promise。
 
-- code: DSL 代码
-- params: 参数，在代码中，你可以使用 `{}` 作为插值，通过 params 传入运行时的真实值，仅在 url 和 headers 中生效
-- dataList: 请求体，当发起 POST 或 PUT 请求时需要传入，由于我们在组合语法中并不知道内部会有几个请求需要发送数据，因此，我们必须传入一个数组与需要的请求进行位置上的对应
-- context: 自定义透传信息，该信息可在 fetch 配置中被获取
+- code: DSL 代码，具体请见 https://www.tangshuang.net/8445.html
+- params: 参数，在 DSL 代码中，你可以使用 `{}` 作为插值，通过 params 传入运行时的真实值，仅在 url 和 headers 中生效
+- dataset: 请求体，当发起 POST 或 PUT 请求时需要传入，由于我们在组合语法中并不知道内部会有几个请求需要发送数据，因此，我们必须传入一个数组与需要的请求进行位置上的对应
+- context: 自定义透传信息，该信息可在 fetch 配置（下文有详解）中被获取
+
+下面是一个使用 params 替换插值的例子：
 
 ```js
-const QueryDetail = `
+const QueryDesc = `
   GET "http://xxx.com/detail/{id}" -> {
     title
     date
   }
 `
 // 使用 params -> GET http://xxx.com/detail/123
-ScopedRequest.run(QueryDetail, { id: 123 })
+RestScript.run(QueryDesc, { id: 123 })
 ```
 
-上面这一句演示了通过插值替换为请求时的真实值。插值设计帮助我们可以把查询代码固化到一个纯文本文件中，而无需和 js 代码混杂在一起。
+上面这一句演示了通过插值替换`{id}`为请求时的真实值`123`。插值设计帮助我们可以把查询代码固化到一个纯文本文件中，而无需和 js 代码混杂在一起，上面例子中的QueryDesc就可以在其他地方反复使用，只需要提供不同的params就可以实现变化。
+
+下面是一个 POST 的例子，会用到 dataset 来传入要提交的数据：
 
 ```js
-const AddUser = `
+const AddUserDesc = `
   POST "/api/users" + {
     name
     age
@@ -65,7 +75,7 @@ const AddUser = `
     age
   }
 `
-ScopedRequest.run(AddUser, null, {
+RestScript.run(AddUserDesc, null, {
   name: 'tom',
   age: 10,
   // 不会被发送
@@ -73,37 +83,39 @@ ScopedRequest.run(AddUser, null, {
 })
 ```
 
-上面这一句演示了发送请求体。ScopedRequest 的一大能力就是对数据进行裁剪，因此不需要的数据不会被作为请求中的部分，在上面的代码中，我们通过 DSL 描述了发送的请求数据只有 `name` 和 `age` 两个字段，因此当我们传入了多个字段时，多余的字段会被裁剪，仅发送真实数据对象中的少数几个字段。另外，此处有一个特殊情况，由于我们的请求中只有一个 `POST` 命令，因此 `run` 的第三个参数可以不传数组，而只传入一个对象（不过如果提交的数据本身是一个数组时，第三个参数必须把提交的数据放在数组内）。
+*注意，此处使用了简便写法，dataset 原本应该是一个数组，但是由于此处只有一个命令语句，传入一个对象可被自动转化为数组。在多命令的代码时，必须传 dataset 为数组。*
 
-### ScopedRequest#mock(code:string)
+上面这一句演示了发送请求体。RestScript 的一大能力就是对数据进行裁剪，因此不需要的数据不会被作为请求中的部分，在上面的代码中，我们通过 DSL 描述了发送的请求数据只有 `name` 和 `age` 两个字段，因此当我们传入了多个字段时，多余的字段会被裁剪，仅发送真实数据对象中的少数几个字段。
+
+### RestScript.mock(code:string): Promise<any>
 
 当你的后端没有准备好时，你可以基于已有的语法进行数据 mock，获得其结果。此处无需传入params, data等信息，你可以直接将 `run` 替换为 `mock`，从而得到 mock 结果。
 
 
 ```js
-ScopedRequest.mock(`
+const mockData = await RestScript.mock(`
   get "http://xxx.com/{id}" -> {
     name
     age
   }
-`).then(data => console.log(data))
+`)
 ```
 
 为了方便和 `run` 保持一致的使用，mock 以 Promise 的形式返回数据。在使用时，你只需要把 `run` 方法替换为 `mock` 方法即可。
 
-另外，你可以传入 `mockers` 这个参数来对不同 shape 进行 mock。传入的 mockers 与 `shapes` 一致。
+另外，你可以传入 `mockers` 这个参数来对不同 shape 进行 mock。传入的 mockers 与 `shapes` 一致。（下文有详细解释）
 
-### ScopedRequest#apply(code:string)
+### RestScript.apply(code:string): any
 
-当你需要提供一个最小可使用的数据时，可以使用 `ScopedRequest.apply` 来获得一个最小可用的数据，这个方法在某些需要使用一个默认值时特别有用，例如在 react 中我们常常需要提供一个默认状态，你可以这样：
+当你需要提供一个最小可使用的数据时，可以使用 `RestScript.apply` 来获得一个最小可用的数据，这个方法在某些需要使用一个默认值时特别有用，例如在 react 中我们常常需要提供一个默认状态，你可以这样：
 
 ```js
-const DefaultData = ScopedRequest.apply(QuerySomeData)
+const DefaultData = RestScript.apply(code)
 
 function SomeComponent() {
   const [data, setData] = useState(DefaultData)
   useEffect(() => {
-    ScopedRequest.run(QuerySomeData).then((data) => {
+    RestScript.run(code).then((data) => {
       setData(data)
     })
   }, [])
@@ -114,11 +126,12 @@ function SomeComponent() {
 
 ## 自定义
 
-如果默认的行为无法满足你的需求，你需要通过 new ScopedRequest 来自定义自己的行为。
+如果默认的行为无法满足你的需求，你需要通过 new RestScript 来自定义自己的行为。
 
 ```js
-const request = new ScopedRequest({
+const request = new RestScript({
   // 覆盖数据请求过程
+  // 默认情况下，使用 fetch 函数，因此支持浏览器和 nodejs 中的请求
   async fetch(url, config, data, context) {},
   // 格式器
   shapes: {},
@@ -132,7 +145,8 @@ const request = new ScopedRequest({
   // 向内提供函数，建议函数名全部大写，例如 AVG() SUM()，仅传入 scopex 之后有效，不传入时，调用函数会报错
   fns: {},
 
-  // 同一处理生成好的 url，例如你可以在发出请求前，向 url 末尾添加一个参数
+  // 最终发起请求前处理url的回调函数
+  // 统一处理生成好的 url，例如你可以在发出请求前，向 url 末尾添加一个参数
   onCreateUrl(url, { params, url }): string,
   // 生成 url 中的 search 参数时被执行
   // 注意，如果参数提供了 ? ! 则会走内部逻辑，不会在此处被处理
@@ -158,16 +172,16 @@ const request = new ScopedRequest({
 
 - url: 语法解析后得到的 url
 - config: 语法解析后得到的参数部分，目前 config 的内容仅为 { headers }
-- data: 透传过来的数据，你可以在自己的 fetch 函数中进行 FormData 化
+- data: POST/PUT/PATCH请求时，透传过来的数据，你可以在自己的 fetch 函数中进行 FormData 化
 - context: 在运行 query.run 时透传的 context，你可以通过该信息做一些特殊处理
 
-例如在 nodejs 中，你必须传入 fetch 来实现数据请求，否则无法在 nodejs 中运行。
+例如使用 axios 来替代 fetch：
 
 ```js
 import axios from 'axios'
-import { ScopedRequest } from 'scopedrequest'
+import { RestScript } from 'restscript'
 
-const request = new ScopedRequest({
+const request = new RestScript({
   fetch(url, config, data, context) {
     if (config.method.toLowerCase() === 'get') {
       return axios.get(url).then(res => res.data.data)
@@ -229,17 +243,17 @@ const options = {
 
 例如内部的 string, number 都是基于上述的逻辑，对不符合类型的数据进行了转化。
 
-> ScopedRequest 中没有类型的概念，只有 shape 的概念，所以在 DSL 中，我们并不是在规定每个节点的类型，但是我们可以在 shape 函数中进行数据类型的检查，并通过调用 `this.debug` 来抛出错误，从而可以做到一定的类型检查。
+*RestScript 中没有类型的概念，只有 shape 的概念，所以在 DSL 中，我们并不是在规定每个节点的类型。但是我们可以在 shape 函数中进行数据类型的检查，并通过调用 `this.debug` 来抛出错误，从而可以做到一定的类型检查和提示。*
 
 ## 使用 ScopeX
 
 基于 scopex 你可以在 表达式 语法中实现复杂的表达式和函数：
 
 ```js
-import { ScopedRequest } from 'scopedrequest'
+import { RestScript } from 'restscript'
 import { ScopeX } from 'scopex'
 
-const query = new ScopedRequest({
+const query = new RestScript({
   scopex: ScopeX,
   fns: {
     AVG(args) {
@@ -314,9 +328,9 @@ GET "..." -> [
 
 ```js
 import { QueryDetail, QueryList } from './requests.srl.md'
-import { ScopedRequest } from 'scopedrequest'
+import { RestScript } from 'restscript'
 
-const data = await ScopedRequest.run(QueryDetail, { id: 111 })
+const data = await RestScript.run(QueryDetail, { id: 111 })
 ```
 
 我们从 .srl.md 中导入了 `##` 后面的名字。*注意，必须是 ## 开头，而非单个 # 开头。*接下来，我们要通过 webpack loader 让这个导入真正可用。
@@ -329,7 +343,7 @@ module.exports = {
     rules: [
       {
         test: /\.srl\.md$/,
-        loader: 'scopedrequest/loader',
+        loader: 'restscript/loader',
         options: {
           // 是否生成/导出ts文件，通过该文件可用于ts代码检查
           // 注意，由于语法上的差异，如果出现大量函数、表达式，将无法得到你想要的ts效果，仅支持较为通用的简单的类型检查

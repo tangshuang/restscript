@@ -310,10 +310,13 @@ export function parse(tokens) {
     }
 
     if (curr === ';' || curr === '\n') {
-      if (command) {
-        commands.push(command)
+      // 当且仅当下一个token为字母时才认为进入了新的命令，否则还是当前命令
+      if (/^[a-zA-Z][a-zA-Z0-9_]+$/.test(next)) {
+        if (command) {
+          commands.push(command)
+        }
+        command = null
       }
-      command = null
       continue
     }
 
@@ -322,7 +325,6 @@ export function parse(tokens) {
         type: TYPES.COMMAND,
         command: curr,
       }
-      continue
     }
     else if (curr === ':') {
       if (Array.isArray(next) && BeginSigns[next[0]]) {

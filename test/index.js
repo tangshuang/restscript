@@ -1,10 +1,10 @@
 import { fetchObject, fetchArray } from './fetch.js';
-import { ScopedRequest } from '../es/index.js';
+import { RestScript } from '../es/index.js';
 
 // ---------------------------------------
 
 async function emptyObject() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     fetch: fetchObject,
   });
   const data = await request.run(`
@@ -14,7 +14,7 @@ async function emptyObject() {
 }
 
 async function emptyArray() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     fetch: fetchArray,
   });
   const data = await request.run(`
@@ -24,7 +24,7 @@ async function emptyArray() {
 }
 
 async function filterArray() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     fetch: fetchArray,
   });
   const data = await request.run(`
@@ -34,7 +34,7 @@ async function filterArray() {
 }
 
 async function filterDeepNodeArray() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     fetch: fetchObject,
   });
   const data = await request.run(`

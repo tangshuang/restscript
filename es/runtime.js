@@ -78,7 +78,7 @@ const defaultShapes = {
   },
 }
 
-export class ScopedRequest {
+export class RestScript {
   constructor(options = {}) {
     this.options = options
   }

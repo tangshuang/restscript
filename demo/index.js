@@ -1,9 +1,10 @@
-import { ScopedRequest } from '../es/index.js'
+import { RestScript } from '../es/index.js'
 import { ScopeX } from 'scopex'
+import { parse, tokenize } from '../es/compiler.js';
 
 // 最基础用法
 async function basic() {
-  const data = await ScopedRequest.run(`
+  const data = await RestScript.run(`
     GET "https://api.github.com/search/repositories?q={keyword}" -> {
       /**
        * 多行注释效果
@@ -31,7 +32,7 @@ async function post() {
       height: 100,
     }
   }
-  const data = await new ScopedRequest({ fetch }).run(`
+  const data = await new RestScript({ fetch }).run(`
     POST "http://localhost:1333/post.json" + {
       id
       name
@@ -49,7 +50,7 @@ async function post() {
 
 // Headers
 async function headers() {
-  const data = await ScopedRequest.run(`
+  const data = await RestScript.run(`
     GET "https://api.github.com/search/repositories?q={keyword}" \\
     // 换行效果
     -H "Content-Type: application/json" \\
@@ -62,7 +63,7 @@ async function headers() {
 
 // COMPOSE
 async function compose() {
-  const data = await new ScopedRequest({
+  const data = await new RestScript({
     scopex: ScopeX,
   }).run(`
     GET "https://api.github.com/search/repositories?q=reactjs" -> { total_count } as React
@@ -78,7 +79,7 @@ async function compose() {
 
 // AWAIT
 async function wait() {
-  const data = await ScopedRequest.run(`
+  const data = await RestScript.run(`
     GET "https://api.github.com/search/repositories?q=reactjs" -> {
       items: [
         {
@@ -104,7 +105,7 @@ async function wait() {
 
 // 自定义格式器
 async function shapes() {
-  const data = await new ScopedRequest({
+  const data = await new RestScript({
     shapes: {
       date: (sep = '-') => function(value) {
         if (typeof value === 'number') {
@@ -129,7 +130,7 @@ async function shapes() {
 
 // 修饰符
 async function decorate() {
-  const data = await ScopedRequest.run(`
+  const data = await RestScript.run(`
     GET "https://api.github.com/search/repositories?q=reactjs" -> {
       /**
        * 将后端的items字段名映射为前端的item字段名
@@ -149,7 +150,7 @@ async function decorate() {
 
 // 片段
 async function fragment() {
-  const data = await ScopedRequest.run(`
+  const data = await RestScript.run(`
     DEFINE libraryInfo: {
       full_name
       url
@@ -169,7 +170,7 @@ async function fragment() {
 }
 
 async function fns() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     fns: {
       COUNT(items) {
         return items.length
@@ -198,7 +199,7 @@ async function fns() {
 }
 
 async function mock() {
-  const data = await ScopedRequest.mock(`
+  const data = await RestScript.mock(`
     FRAGMENT DATA: {
       name: string
       age: number
@@ -214,7 +215,7 @@ async function mock() {
 }
 
 async function debug() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     debug({
       url,
       should,
@@ -244,7 +245,7 @@ async function debug() {
 }
 
 async function normal() {
-  const request = new ScopedRequest({
+  const request = new RestScript({
     async fetch() {
       return true;
     },
@@ -270,7 +271,7 @@ window.debug = debug;
 window.normal = normal;
 
 function apply() {
-  const data = ScopedRequest.apply(`
+  const data = RestScript.apply(`
     DEFINE User: {
       id: string
       name: string
@@ -285,3 +286,35 @@ function apply() {
 }
 
 window.apply = apply
+
+function ast() {
+  const tokens = tokenize(`
+    POST "https//api.bltcy.cn/recraft/v1/images/generations"
+-H "Content-Type: application/json"
+-H "Authorization: {BLTCY_API_KEY}"
+-H "Accept: application/json"
++ {
+    prompt: stirng;
+    size?: string;
+    style?: string;
+    substyle?: string;
+    response_format?: string;
+    controls?: {
+        colors: [{ rgb: <number, number, number> }];
+        background_color?: string;
+    }
+}
+-> {
+    data: [{ url: string }]
+} as Data
+
+COMPOSE -> {
+    data: (Data.data)
+}
+  `);
+  const ast = parse(tokens);
+  console.log(tokens);
+  console.log(ast);
+}
+
+window.ast = ast;

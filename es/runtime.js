@@ -524,8 +524,16 @@ export class RestScript {
     }
     const { method } = config
     const options = { ...config }
-    if (data && isMatch(method, 'post', 'put')) {
+    if (data && typeof data === 'object' && !(data instanceof FormData) && isMatch(method, 'post', 'put', 'patch')) {
+      // 避免content-type没有传
+      options.headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      }
       options.body = JSON.stringify(data)
+    }
+    else if (data) {
+      options.body = data
     }
     // eslint-disable-next-line no-undef
     const res = await fetch(url, options)

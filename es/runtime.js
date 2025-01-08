@@ -345,6 +345,8 @@ export class RestScript {
           method: command,
           url: realUrl,
           headers: realHeaders,
+          source: postData,
+          input: realData,
           payload: finalPostData,
           data,
           node,

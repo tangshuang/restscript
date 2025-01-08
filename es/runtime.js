@@ -275,7 +275,7 @@ export class RestScript {
         )
       }
 
-      const finalPostData = this.options.onRequestData ? this.options.onRequestData(realData) : realData
+      const finalPostData = this.options.onRequest ? this.options.onRequest(realData) : realData
 
       const data = await this.fetch(realUrl, { method: command, headers: realHeaders }, finalPostData, context)
 
@@ -303,12 +303,26 @@ export class RestScript {
       }
 
       allFetchings[index] = {
-        url: realUrl,
-        data,
         method: command,
+        url: realUrl,
         headers: realHeaders,
         payload: realData,
+        data,
         node,
+      }
+
+      if (this.options.onResponse) {
+        output = this.options.onResponse(output, {
+          method: command,
+          url: realUrl,
+          headers: realHeaders,
+          payload: realData,
+          data,
+          node,
+          req,
+          res,
+          alias,
+        });
       }
 
       return output
@@ -425,10 +439,16 @@ export class RestScript {
       }
       through()
     }).then((data) => {
-      if (this.options.onResponseData) {
-        return this.options.onResponseData(data, { code, params, context, requests: allFetchings })
+      if (this.options.onSuccess) {
+        return this.options.onSuccess(data, { code, params, context, requests: allFetchings })
       }
       return data
+    }, (err) => {
+      if (this.options.onError) {
+        const error = this.options.onError(err, { code, params, context, requests: allFetchings })
+        return Promise.resolve(error)
+      }
+      return Promise.reject(err)
     })
   }
 

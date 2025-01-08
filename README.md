@@ -151,10 +151,14 @@ const request = new RestScript({
   // 生成 url 中的 search 参数时被执行
   // 注意，如果参数提供了 ? ! 则会走内部逻辑，不会在此处被处理
   onCreateParam(key, value, paris: Array<{ key: string, value: any }>): string,
-  // 在运行 run 时，向服务端发送数据时，通过 onRequestData 统一对发出的数据进行转换
-  onRequestData(data): data,
-  // 运行 run 得到数据后，通过 onResponseData 对数据进行统一转换
-  onResponseData(data): data,
+  // 在运行 run 时，向服务端发送数据时，会回调 onRequest，你可以通过 onRequest 统一对发出的数据进行转换
+  onRequest(data): data,
+  // 运行 run 过程中，每完成一次请求（一条含请求的命令）后得到数据，此时会回调 onResponse，并将它的返回值作为该条请求的返回结果
+  onResponse(data): data,
+  // 运行 run 完成全部语句之后得到数据后，可通过 onSuccess 对数据进行统一转换
+  onSuccess(data): data,
+  // 运行 run 过程被中断时，可通过 onError 获取错误信息，并抛出该返回的错误
+  onError(error): Error,
   // 运行 mock 之后，通过 onMock 进行统一转换
   onMock(data): data,
   // 对于获取到的数据，决定一个本不在 DSL 描述中的属性是否要保留，只对对象有效，

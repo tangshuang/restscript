@@ -39,16 +39,16 @@ const data = await RestScript.run(SearchImages)
 
 ## API
 
-### RestScript.run(code:string, params:object, dataset:object[] | null, context:any): Promise<any>
+### RestScript.run(code:string, vars:object, dataset:object[] | null, context:any): Promise<any>
 
 运行查询，返回一个查询结果的 promise。
 
 - code: DSL 代码，具体请见 https://www.tangshuang.net/8445.html
-- params: 参数，在 DSL 代码中，你可以使用 `{}` 作为插值，通过 params 传入运行时的真实值，仅在 url 和 headers 中生效
+- vars: 变量集合，在 DSL 代码中，你可以使用 `{}` 作为插值，通过 vars 传入运行时的真实值，仅在 url 和 headers 中生效
 - dataset: 请求体，当发起 POST 或 PUT 请求时需要传入，由于我们在组合语法中并不知道内部会有几个请求需要发送数据，因此，我们必须传入一个数组与需要的请求进行位置上的对应
 - context: 自定义透传信息，该信息可在 fetch 配置（下文有详解）中被获取
 
-下面是一个使用 params 替换插值的例子：
+下面是一个使用 vars 替换插值的例子：
 
 ```js
 const QueryDesc = `
@@ -57,7 +57,7 @@ const QueryDesc = `
     date
   }
 `
-// 使用 params -> GET http://xxx.com/detail/123
+// 使用 vars -> GET http://xxx.com/detail/123
 RestScript.run(QueryDesc, { id: 123 })
 ```
 
@@ -147,7 +147,7 @@ const request = new RestScript({
 
   // 最终发起请求前处理url的回调函数
   // 统一处理生成好的 url，例如你可以在发出请求前，向 url 末尾添加一个参数
-  onCreateUrl(url, { params, url }): string,
+  onCreateUrl(url): string,
   // 生成 url 中的 search 参数时被执行
   // 注意，如果参数提供了 ? ! 则会走内部逻辑，不会在此处被处理
   onCreateParam(key, value, paris: Array<{ key: string, value: any }>): string,

@@ -117,7 +117,7 @@ export class RestScript {
     return { groups, fragments, commands, ast }
   }
 
-  async run(code, params = {}, dataList, context) {
+  async run(code, vars = {}, dataList, context) {
     // 保证编译也是异步的，这样可以在catch中捕获错误
     await sleep()
 
@@ -143,13 +143,13 @@ export class RestScript {
 
     // 替换参数部分插值和表达式
     const replaceBy = (str, warning) => {
-      return str.replace(/{([a-z][a-zA-Z0-9_]+)}/g, (matched, key) => {
-        if (params && typeof params[key] !== 'undefined') {
-          return params[key]
+      return str.replace(/\{([a-zA-Z0-9_]+)\}/g, (matched, key) => {
+        if (vars && typeof vars[key] !== 'undefined') {
+          return vars[key]
         }
 
         // 必传错误提示
-        if (warning && (!params || typeof params[key] === 'undefined')) {
+        if (warning && (!vars || typeof vars[key] === 'undefined')) {
           debug?.({
             level: 'error',
             message: `${str} ${key} 必须传入`,
@@ -179,7 +179,7 @@ export class RestScript {
       const pairs = search.split('&').map((item) => {
         const [key, value] = item.split('=')
 
-        if (/^\{[a-z][a-zA-Z0-9_]+[!?]?\}$/.test(value)) {
+        if (/^\{[a-zA-Z0-9_]+[!?]?\}$/.test(value)) {
           const paramExp = value.substring(1, value.length - 1)
           const [before, after] = paramExp.split(':')
           const end = before[before.length - 1]
@@ -191,9 +191,9 @@ export class RestScript {
             paramKey = before.substring(0, before.length - 1)
           }
 
-          const paramValue = params[paramKey]
+          const paramValue = vars[paramKey]
           const [fn, args] = after ? parseFn(after) : []
-          const content = fn ? this.format(paramValue, fn, (args || []).map(tryParse), { ...context, keyPath: ['@' + paramKey] }) : params[paramKey]
+          const content = fn ? this.format(paramValue, fn, (args || []).map(tryParse), { ...context, keyPath: ['@' + paramKey] }) : vars[paramKey]
 
           // 如果不存在该传入的params，就直接跳过该param，不在url中使用这个query
           if (typeof content === 'undefined') {
@@ -245,7 +245,7 @@ export class RestScript {
       const { headers = {} } = options
 
       const replacedUrl = replaceUrl(url)
-      const realUrl = this.options.onCreateUrl ? this.options.onCreateUrl(replacedUrl, { params, url }) : replacedUrl
+      const realUrl = this.options.onCreateUrl ? this.options.onCreateUrl(replacedUrl, { vars, url }) : replacedUrl
       const realHeaders = Object.keys(headers).reduce((obj, key) => {
         obj[key] = replaceBy(headers[key], true)
         return obj
@@ -275,7 +275,20 @@ export class RestScript {
         )
       }
 
-      const finalPostData = this.options.onRequest ? this.options.onRequest(realData) : realData
+      let finalPostData = realData;
+      if (this.options.onRequest) {
+        finalPostData = this.options.onRequest(realData, {
+          method: command,
+          url: realUrl,
+          headers: realHeaders,
+          data: postData,
+          node,
+          req,
+          res,
+          alias,
+          vars,
+        })
+      }
 
       const data = await this.fetch(realUrl, { method: command, headers: realHeaders }, finalPostData, context)
 
@@ -322,6 +335,7 @@ export class RestScript {
           req,
           res,
           alias,
+          vars,
         });
       }
 
@@ -440,12 +454,12 @@ export class RestScript {
       through()
     }).then((data) => {
       if (this.options.onSuccess) {
-        return this.options.onSuccess(data, { code, params, context, requests: allFetchings })
+        return this.options.onSuccess(data, { code, vars, context, requests: allFetchings })
       }
       return data
     }, (err) => {
       if (this.options.onError) {
-        const error = this.options.onError(err, { code, params, context, requests: allFetchings })
+        const error = this.options.onError(err, { code, vars, context, requests: allFetchings })
         return Promise.resolve(error)
       }
       return Promise.reject(err)
@@ -1486,9 +1500,9 @@ export class RestScript {
     return final
   }
 
-  static run(code, params, dataList, context) {
+  static run(code, vars, dataList, context) {
     const ins = new this()
-    return ins.run(code, params, dataList, context)
+    return ins.run(code, vars, dataList, context)
   }
 
   static mock(code) {

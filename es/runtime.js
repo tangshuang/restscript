@@ -253,6 +253,22 @@ export class RestScript {
 
       let realData = null
       const postData = index > -1 ? dataList[index] : null
+
+      if (this.options.onSetup) {
+        await this.options.onSetup({
+          method: command,
+          url: realUrl,
+          headers: realHeaders,
+          data: postData,
+          node,
+          req,
+          res,
+          alias,
+          vars,
+        });
+      }
+
+
       if (req && postData) {
         realData = this.generate(
           {
@@ -277,7 +293,7 @@ export class RestScript {
 
       let finalPostData = realData;
       if (this.options.onRequest) {
-        finalPostData = this.options.onRequest(realData, {
+        finalPostData = await this.options.onRequest(realData, {
           method: command,
           url: realUrl,
           headers: realHeaders,
@@ -325,7 +341,7 @@ export class RestScript {
       }
 
       if (this.options.onResponse) {
-        output = this.options.onResponse(output, {
+        output = await this.options.onResponse(output, {
           method: command,
           url: realUrl,
           headers: realHeaders,

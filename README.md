@@ -151,6 +151,8 @@ const request = new RestScript({
   // 生成 url 中的 search 参数时被执行
   // 注意，如果参数提供了 ? ! 则会走内部逻辑，不会在此处被处理
   onCreateParam(key, value, paris: Array<{ key: string, value: any }>): string,
+  // 在请求发起，开始进行处理前被回调，你可以在此做一些准备动作
+  onSetup(context): void,
   // 在运行 run 时，向服务端发送数据时，会回调 onRequest，你可以通过 onRequest 统一对发出的数据进行转换
   onRequest(data): data,
   // 运行 run 过程中，每完成一次请求（一条含请求的命令）后得到数据，此时会回调 onResponse，并将它的返回值作为该条请求的返回结果

@@ -67,7 +67,8 @@ export function tokenize(code) {
             brackets --
             if (brackets === 0) {
               container.push(['(', exp, ')'])
-              i = pos + 1
+              i = pos
+              break
             }
             else {
               exp += char

@@ -1,6 +1,6 @@
 import { RestScript } from '../es/index.js'
 import { ScopeX } from 'scopex'
-import { parse, tokenize } from '../es/compiler.js';
+import { parse, tokenize, interpret } from '../es/compiler.js';
 
 // 最基础用法
 async function basic() {
@@ -396,4 +396,22 @@ window.useScopeX = async function() {
     weight: 123,
   })
   console.log(data);
+}
+
+window.unit2 = function unit2() {
+  const code = `
+GET "xxx/{task_id}"
+-H "Authorization: Bearer {aaa}"
+-H "Accept: application/json"
+-> {
+    status: ($.data.status === 'SUCCESS' ? 1 : 0)
+    state: ($)
+    data: ($.data.status === 'SUCCESS' ? $.data.data.songs : null)
+}
+  `
+  const tokens = tokenize(code);
+  console.log(tokens);
+  const ast = parse(tokens);
+  // const { ast } = interpret(code);
+  console.log(ast);
 }

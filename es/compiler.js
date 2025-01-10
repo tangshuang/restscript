@@ -51,6 +51,45 @@ export function tokenize(code) {
     const prev = source[i - 1]
     const container = stack[stack.length - 1]
 
+    if (char === '(') {
+      let at = i
+      let prev = source[at - 1]
+      while (prev === ' ') {
+        prev = source[-- at]
+      }
+      if (prev === ':') {
+        commit()
+        let exp = ''
+        let brackets = 1
+        for (let pos = i + 1; pos < len; pos ++) {
+          let char = source[pos]
+          if (char === ')') {
+            brackets --
+            if (brackets === 0) {
+              container.push(['(', exp, ')'])
+              i = pos + 1
+            }
+            else {
+              exp += char
+            }
+          }
+          else if (char === '\n' && brackets >= 1) {
+            throw new Error(`Unexpected newline in expression: ${exp}`)
+          }
+          else {
+            if (char === '(') {
+              exp += char
+              brackets ++
+            }
+            else {
+              exp += char
+            }
+          }
+        }
+        continue
+      }
+    }
+
     // if (brackets) {
     //   token += char
     //   if (char === ')') {

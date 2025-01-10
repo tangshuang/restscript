@@ -289,9 +289,9 @@ window.apply = apply
 
 function ast() {
   const tokens = tokenize(`
-    POST "https//api.bltcy.cn/recraft/v1/images/generations"
+    POST "/recraft/v1/images/generations"
 -H "Content-Type: application/json"
--H "Authorization: {BLTCY_API_KEY}"
+-H "Authorization: {API_KEY}"
 -H "Accept: application/json"
 + {
     prompt: stirng;
@@ -318,3 +318,82 @@ COMPOSE -> {
 }
 
 window.ast = ast;
+
+window.express = async function express() {
+  const tokens = tokenize(`
+POST "xx"
++ {
+    prompt: stirng;
+}
+-> {
+    data: (1 + 1)
+}
+  `);
+  const ast = parse(tokens);
+  console.log(tokens);
+  console.log(ast);
+  const fetch = (url, config, data) => {
+    return {
+      name: 'tomy',
+      age: 10,
+      height: 100,
+      body: {
+        head: 108,
+        hand: [21, 24],
+      },
+    }
+  }
+  const data = await new RestScript({ fetch }).run(`
+    POST "http://localhost:1333/post.json" + {
+      id
+      name
+    } -> {
+      name
+      age: string
+      hand: ($.body.hand.1)
+    }
+  `, null, {
+    id: '123',
+    name: 'tomy',
+    weight: 123,
+  })
+  console.log('express:', data)
+}
+
+window.useScopeX = async function() {
+  const code = `
+    POST "xxx" + {
+      id
+      name
+    } -> {
+      name
+      age: string
+      hand: ($.body.head > 100 ? {a:$.body.hand[1]} : {b:$.body.hand[0]})
+    }
+  `;
+  const tokens = tokenize(code);
+  const ast = parse(tokens);
+  console.log(tokens);
+  console.log(ast);
+  const fetch = (url, config, data) => {
+    return {
+      name: 'tomy',
+      age: 10,
+      height: 100,
+      body: {
+        head: 108,
+        hand: [21, 24],
+      },
+    }
+  }
+  const restful = new RestScript({
+    scopex: ScopeX,
+    fetch,
+  });
+  const data = await restful.run(code, null, {
+    id: '123',
+    name: 'tomy',
+    weight: 123,
+  })
+  console.log(data);
+}

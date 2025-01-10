@@ -306,9 +306,25 @@ export class RestScript {
         })
       }
 
-      const data = await this.fetch(realUrl, { method: command, headers: realHeaders }, finalPostData, context)
+      let data = await this.fetch(realUrl, { method: command, headers: realHeaders }, finalPostData, context)
 
-      let output = null
+      if (this.options.onResponse) {
+        data = await this.options.onResponse(data, {
+          method: command,
+          url: realUrl,
+          headers: realHeaders,
+          payload: finalPostData,
+          node,
+          req,
+          res,
+          alias,
+          vars,
+        });
+      }
+
+      let output = data
+
+      // res可以不存在，不存在则直接返回fetch的结果
       if (res) {
         output = this.generate(
           {
@@ -338,23 +354,6 @@ export class RestScript {
         payload: finalPostData,
         data,
         node,
-      }
-
-      if (this.options.onResponse) {
-        output = await this.options.onResponse(output, {
-          method: command,
-          url: realUrl,
-          headers: realHeaders,
-          source: postData,
-          input: realData,
-          payload: finalPostData,
-          data,
-          node,
-          req,
-          res,
-          alias,
-          vars,
-        });
       }
 
       return output
@@ -492,7 +491,8 @@ export class RestScript {
       return scope.parse(exp)
     }
 
-    if (/^[a-zA-Z]+(\.?|$)/.test(exp)) {
+    // 用.运算符读取属性值
+    if (/^[a-zA-Z$][a-zA-Z0-9$_\.]*$/.test(exp)) {
       const chain = exp.split('.')
       let curr = data
       for (let i = 0, len = chain.length; i < len; i ++) {
@@ -522,8 +522,10 @@ export class RestScript {
 
   async fetch(url, config = {}, data, context) {
     if (this.options.fetch) {
-      return await this.options.fetch(url, config, data, context)
+      const output = await this.options.fetch(url, config, data, context)
+      return output
     }
+
     const { method } = config
     const options = { ...config }
     if (data && typeof data === 'object' && !(data instanceof FormData) && isMatch(method, 'post', 'put', 'patch')) {
@@ -534,12 +536,33 @@ export class RestScript {
       }
       options.body = JSON.stringify(data)
     }
+    else if (data && data instanceof FormData) {
+      delete options.headers['Content-Type']
+      options.body = data
+    }
     else if (data) {
       options.body = data
     }
+
     // eslint-disable-next-line no-undef
-    const res = await fetch(url, options)
-    return await res.json()
+    const response = await fetch(url, options)
+
+    // 仅对JSON模式的返回值进行解析，如果返回值不是JSON格式，则返回response供外部自己处理
+    if (response.ok && response.headers.get('Content-Type').indexOf('application/json') === 0) {
+      const data = await response.json()
+      return data
+    }
+
+    if (this.options.onReceiveUnknown) {
+      const data = await this.options.onReceiveUnknown(response)
+      return data
+    }
+
+    if (response.ok) {
+      throw new Error(`Unsupported content-type ${response.headers.get('Content-Type')}`)
+    }
+
+    throw new Error(`${response.status} ${response.statusText}`)
   }
 
   /**
@@ -643,6 +666,10 @@ export class RestScript {
     // 值是常规描述
     if (Array.isArray(valueInfo)) {
       const [operators, tag, exps = []] = valueInfo
+      const scope = {
+        ...results,
+        $: data,
+      };
       if (tag && operators === '&') {
         const fragment = fragments[tag]
         if (!fragment) {
@@ -662,12 +689,12 @@ export class RestScript {
         return output
       }
       else if (tag) {
-        const out = this.format(value, tag, exps.map(exp => this.parse(exp, results)), currContext)
+        const out = this.format(value, tag, exps.map(exp => this.parse(exp, scope)), currContext)
         output.value = out
         return output
       }
       else if (exps.length) {
-        const out = this.parse(exps[exps.length - 1], results)
+        const out = this.parse(exps[exps.length - 1], scope)
         output.value = out
         return output
       }

@@ -157,6 +157,9 @@ const request = new RestScript({
   onRequest(data): data,
   // 运行 run 过程中，每完成一次请求（一条含请求的命令）后得到数据，此时会回调 onResponse，并将它的返回值作为该条请求的返回结果
   onResponse(data): data,
+  // 当使用内置的fetch时，如果目标返回的不是JSON格式的数据，那么会回调onRecieveUnknown，因为RestScript只支持对JSON进行格式化，因此，当遇到非JSON数据时，需要你自己处理。
+  // 需要注意，如果你传入了自定义的fetch，那么onRecieveUnknown不会被调用。
+  onReceiveUnknown(response:Response): any,
   // 运行 run 完成全部语句之后得到数据后，可通过 onSuccess 对数据进行统一转换
   onSuccess(data): data,
   // 运行 run 过程被中断时，可通过 onError 获取错误信息，并抛出该返回的错误
